@@ -1,0 +1,19 @@
+# Backend Framework
+fastapi
+uvicorn[standard]
+
+# Agent Framework (Using Google Gemini)
+langchain
+langgraph
+langchain-google-genai
+langchain-community
+
+# Vector Store for Tool Retrieval
+faiss-cpu
+# sentence-transformers 
+langchain-huggingface
+
+# Utilities
+pydantic
+python-dotenv
+requests
