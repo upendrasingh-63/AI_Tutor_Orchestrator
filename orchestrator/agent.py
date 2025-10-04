@@ -1,5 +1,8 @@
+# orchestrator/agent.py
+
 import os
 from typing import TypedDict, List, Dict
+import requests 
 
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
@@ -9,30 +12,24 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from dotenv import load_dotenv
 
+# --- Import configurations and schemas ---
 from .prompts import SCALABLE_TOOL_SELECTOR_PROMPT, PARAMETER_EXTRACTOR_PROMPT
-from .schemas import UserInfo,ChatMessage, NoteMakerInput, FlashcardGeneratorInput, ConceptExplainerInput
+from .schemas import UserInfo, NoteMakerInput, FlashcardGeneratorInput, ConceptExplainerInput, ChatMessage
+from .config import TOOL_REGISTRY, TOOL_API_ENDPOINTS, BASE_API_URL
 
 load_dotenv()
 
 # --- 1. Define Graph State ---
 class GraphState(TypedDict):
     student_message: str
-    chat_history: List[ChatMessage]= Field(default_factory=list, max_items=10)
+    chat_history: List[Dict]
     user_info: Dict
     selected_tool: str
     extracted_parameters: Dict
-    api_response: Dict
+    api_response: Dict 
     final_answer: str
 
-# --- 2. Tool Registry & Retriever ---
-TOOL_REGISTRY = {
-    "NoteMaker": "Use this tool to summarize, organize, or take notes on a topic. Ideal for creating outlines, lists of key points, or structured summaries.",
-    "Flashcards": "Creates digital flashcards for studying and memorization. Best for learning vocabulary, key terms, dates, and important facts. Keywords: study, review, memorize, prepare for a test.",
-    "ConceptExplainer": "Use this tool when the student asks for an explanation of a concept, topic, or question. Answers 'what is', 'how does', or 'tell me about' style questions.",
-    "QuizGenerator": "Generates practice problems, multiple-choice questions, or tests to assess a student's knowledge. Keywords: test me, check my understanding, practice problems, assessment.",
-    "AnalogyCreator": "Explains a complex topic by providing a simple analogy or a real-world comparison. Use when a student wants to understand something by comparing it to something else.",
-}
-
+# --- 2. Initialize Models & Retriever ---
 try:
     embeddings = HuggingFaceEndpointEmbeddings(model="sentence-transformers/all-MiniLM-L6-v2")
     tool_descriptions = list(TOOL_REGISTRY.values())
@@ -43,10 +40,11 @@ except Exception as e:
     print(f"❌ Error creating tool retriever: {e}")
     retriever = None
 
-# --- 3. Initialize LLM ---
 llm = ChatGoogleGenerativeAI(model="gemini-2.5-pro", temperature=0, convert_system_message_to_human=True)
 
-# --- 4. Define Tool Selector Node ---
+# --- 3. Define Graph Nodes ---
+
+# --- Node 3a: Tool Selector ---
 class ToolSelector(BaseModel):
     tool: str = Field(..., description="The name of the single best tool to use.")
 
@@ -59,6 +57,7 @@ tool_selector_chain = tool_selector_prompt | llm | tool_selector_parser
 
 def select_tool_node(state: GraphState) -> GraphState:
     print("\n--- 🧠 NODE: SELECTING TOOL ---")
+    # ... (Logic remains the same)
     student_message = state["student_message"]
     if not retriever:
         raise ValueError("Retriever not initialized.")
@@ -79,21 +78,17 @@ def select_tool_node(state: GraphState) -> GraphState:
     print(f"Tool selected by LLM: {state['selected_tool']}")
     return state
 
-# --- 5. Define Parameter Extractor Node ---
+# --- Node 3b: Parameter Extractor ---
 tool_schema_router = {
-    "NoteMaker": NoteMakerInput,
-    "Flashcards": FlashcardGeneratorInput,
-    "ConceptExplainer": ConceptExplainerInput,
-    "QuizGenerator": FlashcardGeneratorInput, # Placeholder for actual schema
-    "AnalogyCreator": ConceptExplainerInput,  # Placeholder for actual schema
+    "NoteMaker": NoteMakerInput, "Flashcards": FlashcardGeneratorInput, "ConceptExplainer": ConceptExplainerInput,
+    "QuizGenerator": FlashcardGeneratorInput, "AnalogyCreator": ConceptExplainerInput,
 }
-
 parameter_extractor_prompt = ChatPromptTemplate.from_template(PARAMETER_EXTRACTOR_PROMPT)
 
 def extract_parameters_node(state: GraphState) -> GraphState:
     print("\n--- 🧠 NODE: EXTRACTING PARAMETERS ---")
+    # ... (Logic remains the same)
     selected_tool = state["selected_tool"]
-    
     output_schema = tool_schema_router.get(selected_tool)
     if not output_schema:
         raise ValueError(f"No schema defined for tool: {selected_tool}")
@@ -112,34 +107,28 @@ def extract_parameters_node(state: GraphState) -> GraphState:
     print(f"Extracted parameters: {state['extracted_parameters']}")
     return state
     
-# --- 6. Test the Full Sequence ---
-if __name__ == "__main__":
-    # Mock User Info from a State Manager
-    mock_user_info = UserInfo(
-        user_id="student123",
-        name="Harry",
-        grade_level="10",
-        learning_style_summary="Prefers outlines and structured notes. Visual learner.",
-        emotional_state_summary="Focused and attentive",
-        mastery_level_summary="Level 7: Proficient"
-    ).model_dump()
+# --- Node 3c: Tool Orchestrator ---
+def tool_orchestrator_node(state: GraphState) -> GraphState:
+    print("\n--- ⚙️ NODE: ORCHESTRATING TOOL CALL ---")
+    # ... (Logic remains the same)
+    selected_tool = state["selected_tool"]
+    parameters = state["extracted_parameters"]
     
-    # Test case from user prompt
-    test_message = "I need to study for my big history final tomorrow."
+    endpoint_path = TOOL_API_ENDPOINTS.get(selected_tool)
+    if not endpoint_path:
+        raise ValueError(f"No API endpoint defined for tool: {selected_tool}")
     
-    initial_state = GraphState(
-        student_message=test_message,
-        chat_history=[],
-        user_info=mock_user_info,
-        selected_tool="",
-        extracted_parameters={},
-        api_response={},
-        final_answer=""
-    )
+    full_url = f"{BASE_API_URL}{endpoint_path}"
+        
+    print(f"Calling API for {selected_tool} at {full_url}...")
     
-    # Run the sequence: 1. Select Tool -> 2. Extract Params
-    state_after_selection = select_tool_node(initial_state)
-    final_state = extract_parameters_node(state_after_selection)
-    
-    print("\n--- ✅ TEST COMPLETE ---")
-    print(f"Final Extracted Parameters for NoteMaker: {final_state['extracted_parameters']}")
+    try:
+        response = requests.post(full_url, json=parameters)
+        response.raise_for_status() 
+        state["api_response"] = response.json()
+        print("API call successful. Response received.")
+    except requests.exceptions.RequestException as e:
+        print(f"API call failed: {e}")
+        state["api_response"] = {"error": str(e)}
+
+    return state

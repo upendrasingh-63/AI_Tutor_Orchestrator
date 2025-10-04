@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Dict, Literal
+from typing import Literal
 
 # --- Common User Info Schema ---
 # This object represents the student's profile and is required by all tools.
