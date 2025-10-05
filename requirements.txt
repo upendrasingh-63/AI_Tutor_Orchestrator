@@ -1,20 +1,9 @@
-# Backend Framework
-fastapi
-uvicorn[standard]
-httpx
-
-# Agent Framework (Using Google Gemini)
-langchain
-langgraph
-langchain-google-genai
-langchain-community
-
-# Vector Store for Tool Retrieval
-faiss-cpu
-# sentence-transformers 
-langchain-huggingface
-
-# Utilities
+streamlit>=1.20.0
+chromadb>=0.4.0
+sentence-transformers>=2.2.2
+transformers>=4.40.0
+torch>=2.0.0
 pydantic
 python-dotenv
-requests
+tqdm
+groq>=0.6.0
