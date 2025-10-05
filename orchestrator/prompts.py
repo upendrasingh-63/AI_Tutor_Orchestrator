@@ -1,7 +1,6 @@
 
 SCALABLE_TOOL_SELECTOR_PROMPT = """
-You are an expert AI agent responsible for routing a student's request to the correct educational tool.
-Based on the student's message, you must determine which of the following tools is the single most appropriate choice.
+You are an expert AI agent. Your task is to analyze a student's request and identify all the educational tools required to fulfill it.
 
 **Here are the most relevant tools for this specific request:**
 {tools}
@@ -12,7 +11,7 @@ Based on the student's message, you must determine which of the following tools 
 **Student's Latest Message:**
 {student_message}
 
-Based on the student's latest message, which single tool should be used? You must respond with only the name of the tool.
+Based on the student's message, identify the sequence of tools that should be used. It is possible that one or more tools are required. If no tools are relevant, return an empty list.
 
 {format_instructions}
 """

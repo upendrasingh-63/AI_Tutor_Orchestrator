@@ -1,6 +1,7 @@
 # Backend Framework
 fastapi
 uvicorn[standard]
+httpx
 
 # Agent Framework (Using Google Gemini)
 langchain
