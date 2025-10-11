@@ -1,0 +1,17 @@
+# FastAPI and Server
+fastapi
+uvicorn[standard]
+
+# Pydantic for data validation and settings management
+pydantic
+pydantic-settings
+
+# Gemini API
+google-generativeai
+
+# Semantic Search / Vector DB
+sentence-transformers
+faiss-cpu # Use faiss-gpu if you have a compatible GPU
+
+# General utilities
+numpy
